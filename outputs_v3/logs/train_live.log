@@ -1,0 +1,45 @@
+C:\Users\konan\AppData\Local\Programs\Python\Python313\Lib\site-packages\torch\optim\lr_scheduler.py:227: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  warnings.warn(
+Episode    1/1500 | reward= -19.28 | score=  0.0 | steps=  24 | alive=False | eps=0.998 | lr=3.00e-04 | avg_reward_1= -19.28 | avg_score_1= 0.00
+Episode   50/1500 | reward=   0.39 | score= 25.0 | steps=  13 | alive=False | eps=0.905 | lr=2.99e-04 | avg_reward_50=  -9.00 | avg_score_50= 3.96
+Episode  100/1500 | reward=   1.26 | score= 20.0 | steps=  42 | alive=False | eps=0.819 | lr=2.97e-04 | avg_reward_50= -15.48 | avg_score_50= 4.46 | eval_reward=  36.27 | eval_score=18.20 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.60
+Episode  150/1500 | reward=  -9.52 | score= 10.0 | steps=  16 | alive=False | eps=0.741 | lr=2.93e-04 | avg_reward_50=  -9.26 | avg_score_50= 6.64 | eval_reward=  36.27 | eval_score=18.20 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.60
+Episode  200/1500 | reward= -19.61 | score=  0.0 | steps=  13 | alive=False | eps=0.670 | lr=2.87e-04 | avg_reward_50=  -4.75 | avg_score_50= 7.60 | eval_reward=  28.03 | eval_score=22.10 | eval_win=40.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  250/1500 | reward= -19.40 | score=  0.0 | steps=  20 | alive=False | eps=0.606 | lr=2.80e-04 | avg_reward_50= -10.20 | avg_score_50= 4.90 | eval_reward=  28.03 | eval_score=22.10 | eval_win=40.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  300/1500 | reward= -19.37 | score=  0.0 | steps=  21 | alive=False | eps=0.548 | lr=2.72e-04 | avg_reward_50= -12.63 | avg_score_50= 3.84 | eval_reward=  21.90 | eval_score=13.85 | eval_win=45.00% | eval_draw=0.00% | eval_rank=2.45
+Episode  350/1500 | reward= -19.76 | score=  0.0 | steps=   8 | alive=False | eps=0.496 | lr=2.62e-04 | avg_reward_50=  -9.40 | avg_score_50= 4.90 | eval_reward=  21.90 | eval_score=13.85 | eval_win=45.00% | eval_draw=0.00% | eval_rank=2.45
+Episode  400/1500 | reward= -19.49 | score=  0.0 | steps=  17 | alive=False | eps=0.449 | lr=2.51e-04 | avg_reward_50=  -5.17 | avg_score_50= 5.80 | eval_reward=  25.23 | eval_score=12.40 | eval_win=55.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  450/1500 | reward=  -4.22 | score= 18.0 | steps=  26 | alive=False | eps=0.406 | lr=2.39e-04 | avg_reward_50=  -3.48 | avg_score_50= 4.64 | eval_reward=  25.23 | eval_score=12.40 | eval_win=55.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  500/1500 | reward= -19.07 | score=  0.0 | steps=  31 | alive=False | eps=0.368 | lr=2.26e-04 | avg_reward_50=  -3.62 | avg_score_50= 7.06 | eval_reward=  36.89 | eval_score=18.95 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.60
+Episode  550/1500 | reward= -19.16 | score=  0.0 | steps=  28 | alive=False | eps=0.333 | lr=2.12e-04 | avg_reward_50=  -4.15 | avg_score_50= 7.72 | eval_reward=  36.89 | eval_score=18.95 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.60
+Episode  600/1500 | reward=  38.09 | score=  0.0 | steps=   3 | alive=True | eps=0.301 | lr=1.97e-04 | avg_reward_50=   1.57 | avg_score_50= 9.16 | eval_reward=  26.11 | eval_score=17.40 | eval_win=50.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  650/1500 | reward=  -9.79 | score= 10.0 | steps=   7 | alive=False | eps=0.272 | lr=1.82e-04 | avg_reward_50=  -0.68 | avg_score_50= 7.78 | eval_reward=  26.11 | eval_score=17.40 | eval_win=50.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  700/1500 | reward= -19.70 | score=  0.0 | steps=  10 | alive=False | eps=0.246 | lr=1.67e-04 | avg_reward_50=  -5.60 | avg_score_50= 6.26 | eval_reward=  40.30 | eval_score=23.75 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.70
+Episode  750/1500 | reward= -19.97 | score=  0.0 | steps=   1 | alive=False | eps=0.223 | lr=1.51e-04 | avg_reward_50=  -1.17 | avg_score_50=12.06 | eval_reward=  40.30 | eval_score=23.75 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.70
+Episode  800/1500 | reward= -19.61 | score=  0.0 | steps=  13 | alive=False | eps=0.202 | lr=1.36e-04 | avg_reward_50=   5.75 | avg_score_50= 8.50 | eval_reward=  29.01 | eval_score=13.85 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.50
+Episode  850/1500 | reward=  38.30 | score=  0.0 | steps=  10 | alive=True | eps=0.182 | lr=1.21e-04 | avg_reward_50=   5.43 | avg_score_50= 8.24 | eval_reward=  29.01 | eval_score=13.85 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.50
+Episode  900/1500 | reward= -19.70 | score=  0.0 | steps=  10 | alive=False | eps=0.165 | lr=1.06e-04 | avg_reward_50=  -0.88 | avg_score_50= 8.68 | eval_reward=  30.13 | eval_score=17.10 | eval_win=55.00% | eval_draw=0.00% | eval_rank=2.65
+Episode  950/1500 | reward=   3.84 | score= 20.0 | steps= 128 | alive=False | eps=0.149 | lr=9.11e-05 | avg_reward_50=  -0.24 | avg_score_50=14.34 | eval_reward=  30.13 | eval_score=17.10 | eval_win=55.00% | eval_draw=0.00% | eval_rank=2.65
+Episode 1000/1500 | reward=  -3.70 | score= 10.0 | steps= 160 | alive=False | eps=0.135 | lr=7.72e-05 | avg_reward_50=   2.57 | avg_score_50= 9.48 | eval_reward=  41.09 | eval_score=24.80 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.75
+Episode 1050/1500 | reward=  11.77 | score= 35.0 | steps=  59 | alive=False | eps=0.122 | lr=6.42e-05 | avg_reward_50=  17.79 | avg_score_50=17.48 | eval_reward=  41.09 | eval_score=24.80 | eval_win=60.00% | eval_draw=0.00% | eval_rank=2.75
+Episode 1100/1500 | reward= -19.52 | score=  0.0 | steps=  16 | alive=False | eps=0.111 | lr=5.21e-05 | avg_reward_50=   6.43 | avg_score_50=13.68 | eval_reward=  27.99 | eval_score=18.80 | eval_win=50.00% | eval_draw=0.00% | eval_rank=2.60
+Episode 1150/1500 | reward= -19.70 | score=  0.0 | steps=  10 | alive=False | eps=0.100 | lr=4.11e-05 | avg_reward_50=  12.13 | avg_score_50=12.88 | eval_reward=  27.99 | eval_score=18.80 | eval_win=50.00% | eval_draw=0.00% | eval_rank=2.60
+Episode 1200/1500 | reward=  38.03 | score=  0.0 | steps=   1 | alive=True | eps=0.091 | lr=3.14e-05 | avg_reward_50=  11.81 | avg_score_50=17.06 | eval_reward=  27.89 | eval_score=23.90 | eval_win=40.00% | eval_draw=0.00% | eval_rank=2.60
+Episode 1250/1500 | reward=  -7.90 | score= 10.0 | steps=  70 | alive=False | eps=0.082 | lr=2.29e-05 | avg_reward_50=   9.87 | avg_score_50=17.22 | eval_reward=  27.89 | eval_score=23.90 | eval_win=40.00% | eval_draw=0.00% | eval_rank=2.60
+Episode 1300/1500 | reward= -19.01 | score=  0.0 | steps=  33 | alive=False | eps=0.074 | lr=1.58e-05 | avg_reward_50=  13.72 | avg_score_50=12.68 | eval_reward=  53.06 | eval_score=36.05 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.75
+Episode 1350/1500 | reward=  58.33 | score= 25.0 | steps=  11 | alive=True | eps=0.067 | lr=1.03e-05 | avg_reward_50=  11.60 | avg_score_50=18.50 | eval_reward=  53.06 | eval_score=36.05 | eval_win=65.00% | eval_draw=0.00% | eval_rank=2.75
+Episode 1400/1500 | reward= -18.53 | score=  0.0 | steps=  49 | alive=False | eps=0.061 | lr=6.25e-06 | avg_reward_50=  14.30 | avg_score_50=14.90 | eval_reward=  50.81 | eval_score=29.95 | eval_win=70.00% | eval_draw=0.00% | eval_rank=2.45
+Episode 1450/1500 | reward=  76.22 | score= 35.0 | steps= 274 | alive=True | eps=0.055 | lr=3.81e-06 | avg_reward_50=  22.61 | avg_score_50=27.46 | eval_reward=  50.81 | eval_score=29.95 | eval_win=70.00% | eval_draw=0.00% | eval_rank=2.45
+Episode 1500/1500 | reward= -19.85 | score=  0.0 | steps=   5 | alive=False | eps=0.050 | lr=3.00e-06 | avg_reward_50=  17.28 | avg_score_50=22.30 | eval_reward=  43.65 | eval_score=32.15 | eval_win=55.00% | eval_draw=0.00% | eval_rank=2.60
+
+Entraînement terminé.
+Dernière reward moyenne glissante: 17.28
+Dernier score moyen glissant: 22.30
+Dernier win rate glissant: 0.26
+Dernier draw rate glissant: 0.00
+Dernier rang moyen glissant: 2.66
+Dernière reward eval: 43.65
+Dernier score eval: 32.15
+Dernier win rate eval: 55.00%
+Dernier draw rate eval: 0.00%
+Dernier rang moyen eval: 2.60

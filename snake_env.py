@@ -95,6 +95,10 @@ class MultiSnakeEnv:
         survival_reward: float = 0.2,
         death_penalty: float = -15.0,
         win_bonus: float = 25.0,
+        timeout_win_bonus: float = 12.5,
+        draw_bonus: float = 4.0,
+        timeout_loss_penalty: float = -3.0,
+        elimination_bonus: float = 1.5,
         loop_penalty: float = -0.5,
         render_fps: int = 5,
     ) -> None:
@@ -106,6 +110,10 @@ class MultiSnakeEnv:
         self.survival_reward = survival_reward
         self.death_penalty = death_penalty
         self.win_bonus = win_bonus
+        self.timeout_win_bonus = timeout_win_bonus
+        self.draw_bonus = draw_bonus
+        self.timeout_loss_penalty = timeout_loss_penalty
+        self.elimination_bonus = elimination_bonus
         self.loop_penalty = loop_penalty
 
         self.food_counts = food_counts or {
@@ -270,15 +278,29 @@ class MultiSnakeEnv:
 
         alive_non_player = sum(1 for s in self.snakes if s.alive and not s.is_player)
         if self.player.alive and bots_dead_now > 0:
-            reward += 0.5 * bots_dead_now
+            reward += self.elimination_bonus * bots_dead_now
         if self.player.alive and alive_non_player == 0:
             reward += self.win_bonus
             terminated = True
 
         if self.steps >= self.max_steps and not terminated:
             truncated = True
-            if self.player.alive and self._is_player_first():
-                reward += self.win_bonus / 2.0
+            if self.player.alive:
+                if self._is_player_first():
+                    alive_opponents = sum(1 for s in self.snakes if s.alive and not s.is_player)
+                    if alive_opponents == 0:
+                        reward += self.timeout_win_bonus
+                    else:
+                        player_score = self.player.score
+                        best_opponent_score = max(
+                            (s.score for s in self.snakes if not s.is_player), default=0
+                        )
+                        if player_score == best_opponent_score:
+                            reward += self.draw_bonus
+                        else:
+                            reward += self.timeout_win_bonus
+                else:
+                    reward += self.timeout_loss_penalty
 
         info = self._build_info(deaths=deaths, terminated=terminated, truncated=truncated)
         return self.get_observation(), reward, terminated, truncated, info

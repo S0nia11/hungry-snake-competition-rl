@@ -54,7 +54,7 @@ def _position_value(env: MultiSnakeEnv, snake: Snake, new_head: tuple[int, int])
         best_food_value = max(best_food_value, value)
 
     enemy_penalty = 0.0
-    nearest_enemy = env._nearest_enemy_head_for_snake(snake.snake_id)
+    nearest_enemy = env._nearest_enemy_head(snake.body[0], observer_id=snake.snake_id)
     if nearest_enemy is not None:
         enemy_dist = abs(nearest_enemy[0] - new_head[0]) + abs(nearest_enemy[1] - new_head[1])
         if enemy_dist <= 1:

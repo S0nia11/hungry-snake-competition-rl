@@ -14,7 +14,7 @@ from dqn_agent import DQNAgent
 from snake_env import FoodType, MultiSnakeEnv, Snake
 
 
-CELL_SIZE = 24
+CELL_SIZE = 26
 PADDING = 2
 
 WINDOW_BG = "#0b1220"
@@ -22,7 +22,7 @@ SURFACE_BG = "#111827"
 CARD_BG = "#0f172a"
 BORDER = "#22314f"
 GRID_BG = "#1b2435"
-GRID_LINE = "#334155"
+GRID_LINE = "#263348"
 TEXT_MAIN = "#e5e7eb"
 TEXT_SUB = "#94a3b8"
 TEXT_MUTED = "#64748b"
@@ -37,8 +37,26 @@ FOOD_COLORS = {
     FoodType.RISKY: "#ef4444",
 }
 SNAKE_COLORS = ["#3b82f6", "#f97316", "#a855f7", "#14b8a6", "#eab308", "#ec4899", "#06b6d4", "#84cc16"]
-DEAD_COLOR = "#64748b"
+DEAD_COLOR = "#374151"
 CONTROLLERS = ("human",) + AVAILABLE_POLICIES
+
+OUTCOME_LABELS = {
+    "win_elimination": "VICTOIRE  (élimination)",
+    "win_timeout":     "VICTOIRE  (timeout)",
+    "draw_timeout":    "MATCH NUL (timeout)",
+    "loss_death":      "DÉFAITE   (mort)",
+    "loss_timeout":    "DÉFAITE   (timeout)",
+    "ongoing":         "En cours…",
+}
+
+
+def _dim_color(hex_color: str, factor: float) -> str:
+    """Assombrit une couleur hex par factor (0=noir, 1=original)."""
+    factor = max(0.0, min(1.0, factor))
+    r = int(int(hex_color[1:3], 16) * factor)
+    g = int(int(hex_color[3:5], 16) * factor)
+    b = int(int(hex_color[5:7], 16) * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 @dataclass
@@ -66,10 +84,10 @@ class SnakeGameUI:
         self.default_model_path = model_path or self._guess_default_model()
 
         self.root = tk.Tk()
-        self.root.title("Multi-Snake RL UI")
+        self.root.title("Multi-Snake RL")
         self.root.configure(bg=WINDOW_BG)
-        self.root.geometry("1400x900")
-        self.root.minsize(1080, 720)
+        self.root.geometry("1440x920")
+        self.root.minsize(1100, 740)
 
         self.running = False
         self.after_id: Optional[str] = None
@@ -99,6 +117,7 @@ class SnakeGameUI:
         self._configure_styles()
         self._build_widgets()
         self._bind_keys()
+        self.available_models = self._scan_model_files()
         self._build_snake_rows()
         self._reset_game(force_reload_models=True)
 
@@ -176,40 +195,41 @@ class SnakeGameUI:
         ttk.Label(top, textvariable=self.speed_label_var, style="MutedInline.TLabel").grid(row=0, column=5, padx=(0, 12), sticky="w")
 
         ttk.Button(top, text="Appliquer", command=self._apply_snake_setup, style="Primary.TButton").grid(row=0, column=6, padx=3)
-        ttk.Button(top, text="Start", command=self.start, style="Dark.TButton").grid(row=0, column=7, padx=3)
-        ttk.Button(top, text="Pause", command=self.pause, style="Dark.TButton").grid(row=0, column=8, padx=3)
-        ttk.Button(top, text="Reset", command=lambda: self._reset_game(force_reload_models=True), style="Dark.TButton").grid(row=0, column=9, padx=3)
-        ttk.Button(top, text="Step", command=self.step_once, style="Dark.TButton").grid(row=0, column=10, padx=3)
+        ttk.Button(top, text="▶  Start", command=self.start, style="Dark.TButton").grid(row=0, column=7, padx=3)
+        ttk.Button(top, text="⏸  Pause", command=self.pause, style="Dark.TButton").grid(row=0, column=8, padx=3)
+        ttk.Button(top, text="↺  Reset", command=lambda: self._reset_game(force_reload_models=True), style="Dark.TButton").grid(row=0, column=9, padx=3)
+        ttk.Button(top, text="›  Step", command=self.step_once, style="Dark.TButton").grid(row=0, column=10, padx=3)
 
-        ttk.Button(top, text="Onglet Snakes", command=lambda: self.notebook.select(self.tab_snakes), style="Dark.TButton").grid(row=0, column=12, padx=(12, 3))
-        ttk.Button(top, text="Onglet Match", command=lambda: self.notebook.select(self.tab_match), style="Dark.TButton").grid(row=0, column=13, padx=3)
+        ttk.Button(top, text="Config Snakes", command=lambda: self.notebook.select(self.tab_snakes), style="Dark.TButton").grid(row=0, column=12, padx=(12, 3))
+        ttk.Button(top, text="Arène", command=lambda: self.notebook.select(self.tab_match), style="Dark.TButton").grid(row=0, column=13, padx=3)
 
         self.notebook = ttk.Notebook(self.root, style="App.TNotebook")
         self.notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=(8, 0))
 
         self.tab_match = ttk.Frame(self.notebook, style="App.TFrame")
         self.tab_snakes = ttk.Frame(self.notebook, style="App.TFrame")
-        self.notebook.add(self.tab_match, text="Match")
-        self.notebook.add(self.tab_snakes, text="Snakes & modèles")
+        self.notebook.add(self.tab_match, text="  Match  ")
+        self.notebook.add(self.tab_snakes, text="  Snakes & modèles  ")
 
         self._build_match_tab()
         self._build_snakes_tab()
 
-        status = ttk.Frame(self.root, style="Top.TFrame", padding=(10, 6))
-        status.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        ttk.Label(status, textvariable=self.status_var, style="Inline.TLabel").pack(anchor="w")
+        status = ttk.Frame(self.root, style="Top.TFrame", padding=(10, 5))
+        status.grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        ttk.Label(status, textvariable=self.status_var, style="MutedInline.TLabel").pack(anchor="w")
 
     def _build_match_tab(self) -> None:
-        self.tab_match.columnconfigure(0, weight=2)
+        self.tab_match.columnconfigure(0, weight=3)
         self.tab_match.columnconfigure(1, weight=1)
         self.tab_match.rowconfigure(0, weight=1)
 
+        # --- Arène ---
         arena_card = ttk.Frame(self.tab_match, style="Card.TFrame", padding=10)
         arena_card.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=0)
         arena_card.columnconfigure(0, weight=1)
         arena_card.rowconfigure(1, weight=1)
 
-        ttk.Label(arena_card, text="Arène", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
+        ttk.Label(arena_card, text="Arène", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 6))
 
         arena_wrap = tk.Frame(arena_card, bg=CARD_BG)
         arena_wrap.grid(row=1, column=0, sticky="nsew")
@@ -233,25 +253,35 @@ class SnakeGameUI:
         self.canvas = tk.Canvas(inner, width=canvas_w, height=canvas_h, bg=GRID_BG, highlightthickness=0)
         self.canvas.pack(anchor="nw")
 
-        legend = tk.Label(
-            arena_card,
-            text="Vert = normal   •   Jaune = bonus   •   Rouge = risky   •   H = humain   •   pastille blanche = modèle",
-            bg=CARD_BG,
-            fg=TEXT_SUB,
-            anchor="w",
-            justify=tk.LEFT,
-            font=("Segoe UI", 9),
-        )
-        legend.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        # Légende visuelle
+        legend_frame = tk.Frame(arena_card, bg=CARD_BG)
+        legend_frame.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        for _, color, label in [
+            (FoodType.NORMAL, FOOD_COLORS[FoodType.NORMAL], "normal"),
+            (FoodType.BONUS,  FOOD_COLORS[FoodType.BONUS],  "bonus"),
+            (FoodType.RISKY,  FOOD_COLORS[FoodType.RISKY],  "risky"),
+        ]:
+            dot = tk.Canvas(legend_frame, width=12, height=12, bg=CARD_BG, highlightthickness=0)
+            dot.create_oval(1, 1, 11, 11, fill=color, outline="")
+            dot.pack(side=tk.LEFT, padx=(8, 2))
+            tk.Label(legend_frame, text=label, bg=CARD_BG, fg=TEXT_SUB, font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Label(legend_frame, text="H = humain  •  ● = modèle RL", bg=CARD_BG, fg=TEXT_MUTED, font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=(16, 0))
 
+        # --- Monitor ---
         side_card = ttk.Frame(self.tab_match, style="Card.TFrame", padding=10)
         side_card.grid(row=0, column=1, sticky="nsew")
         side_card.columnconfigure(0, weight=1)
-        side_card.rowconfigure(1, weight=1)
+        side_card.rowconfigure(2, weight=1)
 
         ttk.Label(side_card, text="Monitor", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
+
+        # Canvas barres de score
+        self.score_canvas = tk.Canvas(side_card, bg=CARD_BG, height=120, highlightthickness=0)
+        self.score_canvas.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+
+        # Texte monitor
         right = tk.Frame(side_card, bg=CARD_BG)
-        right.grid(row=1, column=0, sticky="nsew")
+        right.grid(row=2, column=0, sticky="nsew")
         right.rowconfigure(0, weight=1)
         right.columnconfigure(0, weight=1)
 
@@ -262,14 +292,24 @@ class SnakeGameUI:
             fg=TEXT_MAIN,
             insertbackground=TEXT_MAIN,
             relief=tk.FLAT,
-            font=("Consolas", 10),
+            font=("Consolas", 9),
             padx=10,
-            pady=10,
+            pady=8,
+            cursor="arrow",
         )
         self.info_text.grid(row=0, column=0, sticky="nsew")
         info_scroll = ttk.Scrollbar(right, orient="vertical", command=self.info_text.yview)
         info_scroll.grid(row=0, column=1, sticky="ns")
         self.info_text.configure(yscrollcommand=info_scroll.set, state=tk.DISABLED)
+
+        # Tags de couleur pour le texte monitor
+        self.info_text.tag_configure("header",  foreground=ACCENT,   font=("Consolas", 9, "bold"))
+        self.info_text.tag_configure("alive",   foreground="#4ade80")
+        self.info_text.tag_configure("dead",    foreground=TEXT_MUTED)
+        self.info_text.tag_configure("winner",  foreground="#fbbf24", font=("Consolas", 9, "bold"))
+        self.info_text.tag_configure("sub",     foreground=TEXT_SUB)
+        self.info_text.tag_configure("alert",   foreground="#f87171")
+        self.info_text.tag_configure("muted",   foreground=TEXT_MUTED)
 
     def _build_snakes_tab(self) -> None:
         self.tab_snakes.columnconfigure(0, weight=1)
@@ -277,21 +317,23 @@ class SnakeGameUI:
 
         help_card = ttk.Frame(self.tab_snakes, style="Card.TFrame", padding=10)
         help_card.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        ttk.Label(help_card, text="Configuration compacte", style="CardTitle.TLabel").pack(anchor="w")
-        help_text = (
-            "Chaque snake peut avoir un contrôleur différent. Le panneau ci-dessous a son propre scroll, "
-            "donc il ne pousse plus l'arène vers le bas. Une seule ligne 'human' est pilotée au clavier."
-        )
-        tk.Label(help_card, text=help_text, bg=CARD_BG, fg=TEXT_SUB, justify=tk.LEFT, anchor="w", font=("Segoe UI", 9), wraplength=1100).pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(help_card, text="Configuration des snakes", style="CardTitle.TLabel").pack(anchor="w")
+        tk.Label(
+            help_card,
+            text="Assignez un contrôleur (human / IA baseline / modèle RL) à chaque snake. Sélectionnez le fichier .pt dans le dropdown ou via Parcourir.",
+            bg=CARD_BG, fg=TEXT_SUB, justify=tk.LEFT, anchor="w", font=("Segoe UI", 9), wraplength=1200,
+        ).pack(fill=tk.X, pady=(4, 0))
 
         config_card = ttk.Frame(self.tab_snakes, style="Card.TFrame", padding=10)
         config_card.grid(row=1, column=0, sticky="nsew")
         config_card.rowconfigure(1, weight=1)
         config_card.columnconfigure(0, weight=1)
+        config_card.columnconfigure(1, weight=0)
         ttk.Label(config_card, text="Contrôleur et modèle par snake", style="CardTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
+        ttk.Button(config_card, text="↺ Rafraîchir les modèles", style="Dark.TButton", command=self._refresh_model_list).grid(row=0, column=1, sticky="e", padx=(8, 0), pady=(0, 8))
 
         wrap = tk.Frame(config_card, bg=CARD_BG)
-        wrap.grid(row=1, column=0, sticky="nsew")
+        wrap.grid(row=1, column=0, columnspan=2, sticky="nsew")
         wrap.rowconfigure(0, weight=1)
         wrap.columnconfigure(0, weight=1)
 
@@ -308,39 +350,69 @@ class SnakeGameUI:
 
     # ----------------------- model / config helpers -----------------------
     def _build_snake_rows(self) -> None:
+        # Sauvegarder les valeurs actuelles avant de tout reconstruire
+        saved = {
+            cfg.snake_id: (cfg.controller_var.get(), cfg.model_path_var.get())
+            for cfg in self.snake_configs
+        }
+
         for child in self.config_inner.winfo_children():
             child.destroy()
         self.snake_configs.clear()
 
-        headers = [("Snake", 0), ("Contrôleur", 1), ("Modèle (.pt)", 2)]
-        for text, col in headers:
+        # En-têtes
+        for text, col in [("Snake", 1), ("Contrôleur", 2), ("Modèle (.pt)", 3)]:
             lbl = tk.Label(self.config_inner, text=text, bg=CARD_BG, fg=TEXT_MAIN, font=("Segoe UI", 10, "bold"), anchor="w")
             lbl.grid(row=0, column=col, sticky="ew", padx=6, pady=(2, 8))
-        self.config_inner.grid_columnconfigure(2, weight=1)
+        self.config_inner.grid_columnconfigure(3, weight=1)
 
         total = max(2, int(self.total_snakes_var.get()))
         for snake_id in range(total):
-            controller_var = tk.StringVar(value="human" if snake_id == 0 else "heuristic")
-            model_path_var = tk.StringVar(value=self.default_model_path if snake_id == 0 else "")
+            if snake_id in saved:
+                default_ctrl, default_path = saved[snake_id]
+            else:
+                default_ctrl = "human" if snake_id == 0 else "heuristic"
+                default_path = self.default_model_path if snake_id == 0 else ""
+            controller_var = tk.StringVar(value=default_ctrl)
+            model_path_var = tk.StringVar(value=default_path)
+
+            # Pastille couleur
+            swatch_color = SNAKE_COLORS[snake_id % len(SNAKE_COLORS)]
+            swatch = tk.Canvas(self.config_inner, width=14, height=14, bg=CARD_BG, highlightthickness=0)
+            swatch.create_rectangle(1, 1, 13, 13, fill=swatch_color, outline="", width=0)
+            swatch.grid(row=snake_id + 1, column=0, padx=(6, 2), pady=4)
 
             label = tk.Label(self.config_inner, text=f"Snake {snake_id}", bg=CARD_BG, fg=TEXT_MAIN, font=("Segoe UI", 10), anchor="w")
-            label.grid(row=snake_id + 1, column=0, sticky="ew", padx=6, pady=4)
+            label.grid(row=snake_id + 1, column=1, sticky="ew", padx=(2, 6), pady=4)
 
             combo = ttk.Combobox(self.config_inner, textvariable=controller_var, values=CONTROLLERS, state="readonly", width=14, style="Dark.TCombobox")
-            combo.grid(row=snake_id + 1, column=1, sticky="ew", padx=6, pady=4)
+            combo.grid(row=snake_id + 1, column=2, sticky="ew", padx=6, pady=4)
 
-            entry = ttk.Entry(self.config_inner, textvariable=model_path_var, style="Dark.TEntry")
-            entry.grid(row=snake_id + 1, column=2, sticky="ew", padx=6, pady=4)
+            model_combo = ttk.Combobox(self.config_inner, textvariable=model_path_var, values=self.available_models, state="normal", width=40, style="Dark.TCombobox")
+            model_combo.grid(row=snake_id + 1, column=3, sticky="ew", padx=6, pady=4)
 
             button = ttk.Button(self.config_inner, text="Parcourir", style="Dark.TButton", command=lambda var=model_path_var: self._browse_model_for(var))
-            button.grid(row=snake_id + 1, column=3, sticky="ew", padx=6, pady=4)
+            button.grid(row=snake_id + 1, column=4, sticky="ew", padx=6, pady=4)
 
-            self.snake_configs.append(SnakeControllerConfig(snake_id, controller_var, model_path_var, [label, combo, entry, button]))
+            self.snake_configs.append(SnakeControllerConfig(snake_id, controller_var, model_path_var, [label, combo, model_combo, button]))
 
     def _browse_model_for(self, target_var: tk.StringVar) -> None:
         path = filedialog.askopenfilename(filetypes=[("PyTorch model", "*.pt"), ("All files", "*.*")])
         if path:
             target_var.set(path)
+
+    def _scan_model_files(self) -> list[str]:
+        base = Path(__file__).parent
+        found = []
+        for pt_file in sorted(base.rglob("*.pt")):
+            if any(p.startswith("__") or p == ".git" for p in pt_file.parts):
+                continue
+            found.append(str(pt_file))
+        return found
+
+    def _refresh_model_list(self) -> None:
+        self.available_models = self._scan_model_files()
+        self._build_snake_rows()
 
     def _guess_default_model(self) -> str:
         candidates = [
@@ -372,7 +444,7 @@ class SnakeGameUI:
 
         path = Path(model_path)
         if not path.exists():
-            self.loaded_agent_errors.append(f"Modèle introuvable: {model_path}")
+            self.loaded_agent_errors.append(f"Introuvable: {path.name}")
             return None
 
         try:
@@ -385,7 +457,7 @@ class SnakeGameUI:
             self.loaded_agents[model_path] = agent
             return agent
         except Exception as exc:
-            self.loaded_agent_errors.append(f"Chargement échoué ({model_path}): {exc}")
+            self.loaded_agent_errors.append(f"Erreur ({path.name}): {exc}")
             return None
 
     def _all_snake_controller_specs(self) -> list[dict]:
@@ -395,7 +467,6 @@ class SnakeGameUI:
         ]
 
     def _apply_snake_setup(self) -> None:
-        self._build_snake_rows()
         self._reset_game(force_reload_models=True)
         self.notebook.select(self.tab_match)
 
@@ -407,9 +478,9 @@ class SnakeGameUI:
 
     # ------------------------- controls / input -------------------------
     def _bind_keys(self) -> None:
-        self.root.bind("<Up>", lambda e: self._queue_direction((0, -1)))
-        self.root.bind("<Down>", lambda e: self._queue_direction((0, 1)))
-        self.root.bind("<Left>", lambda e: self._queue_direction((-1, 0)))
+        self.root.bind("<Up>",    lambda e: self._queue_direction((0, -1)))
+        self.root.bind("<Down>",  lambda e: self._queue_direction((0, 1)))
+        self.root.bind("<Left>",  lambda e: self._queue_direction((-1, 0)))
         self.root.bind("<Right>", lambda e: self._queue_direction((1, 0)))
         self.root.bind("<w>", lambda e: self._queue_direction((0, -1)))
         self.root.bind("<z>", lambda e: self._queue_direction((0, -1)))
@@ -418,9 +489,9 @@ class SnakeGameUI:
         self.root.bind("<q>", lambda e: self._queue_direction((-1, 0)))
         self.root.bind("<d>", lambda e: self._queue_direction((1, 0)))
         self.root.bind("<space>", lambda e: self.toggle_running())
-        self.root.bind_all("<MouseWheel>", self._on_mousewheel, add=True)
-        self.root.bind_all("<Button-4>", self._on_mousewheel_linux, add=True)
-        self.root.bind_all("<Button-5>", self._on_mousewheel_linux, add=True)
+        self.root.bind_all("<MouseWheel>",  self._on_mousewheel, add=True)
+        self.root.bind_all("<Button-4>",    self._on_mousewheel_linux, add=True)
+        self.root.bind_all("<Button-5>",    self._on_mousewheel_linux, add=True)
 
     def _on_mousewheel(self, event: tk.Event) -> None:
         widget = self.root.winfo_containing(event.x_root, event.y_root)
@@ -482,7 +553,7 @@ class SnakeGameUI:
         self.current_human_snake_id = human_ids[0]
         self.current_human_warning = None
         if len(human_ids) > 1:
-            self.current_human_warning = f"Une seule ligne 'human' peut être pilotée. Snake {human_ids[0]} est contrôlé au clavier."
+            self.current_human_warning = f"Seul Snake {human_ids[0]} est piloté au clavier."
 
     # ---------------------------- game loop ----------------------------
     def _reset_game(self, force_reload_models: bool = False) -> None:
@@ -500,11 +571,9 @@ class SnakeGameUI:
         self.last_done = False
         self._refresh_human_binding()
         self._draw()
+        self._update_score_bars()
         self._update_side_panel()
-        status = "Nouvelle partie prête. L'onglet Snakes reste scrollable et n'écrase plus l'arène."
-        if self.current_human_warning:
-            status += f" {self.current_human_warning}"
-        self.status_var.set(status)
+        self.status_var.set("Prêt — appuie sur Start ou Espace")
 
     def start(self) -> None:
         if self.running:
@@ -567,7 +636,7 @@ class SnakeGameUI:
 
     def _advance_game(self) -> None:
         if self.last_done:
-            self.status_var.set("Partie terminée. Reset pour recommencer.")
+            self.status_var.set("Partie terminée — Reset pour rejouer")
             return
 
         self.loaded_agent_errors = []
@@ -577,17 +646,24 @@ class SnakeGameUI:
         self.last_info = info
         self.last_done = terminated or truncated
 
+        steps = self.env.steps
+        total = self.env.max_steps
+        pct = int(steps / total * 100)
+        outcome = info.get("outcome", "ongoing")
+
         if self.last_done:
-            msg = f"Fin de partie | outcome={info.get('outcome', 'ongoing')} | reward={reward:.2f}"
+            label = OUTCOME_LABELS.get(outcome, outcome)
+            msg = f"FIN  {label}  ({steps} steps)"
         else:
-            msg = f"step={self.env.steps} | snakes={len(self.env.snakes)} | outcome={info.get('outcome', 'ongoing')}"
+            msg = f"Step {steps}/{total}  ({pct}%)"
         if self.current_human_warning:
-            msg += f" | {self.current_human_warning}"
+            msg += f"  •  {self.current_human_warning}"
         if self.loaded_agent_errors:
-            msg += " | " + " ; ".join(self.loaded_agent_errors[:2])
+            msg += "  •  " + " ; ".join(self.loaded_agent_errors[:2])
         self.status_var.set(msg)
 
         self._draw()
+        self._update_score_bars()
         self._update_side_panel()
 
     def _loop(self) -> None:
@@ -607,38 +683,166 @@ class SnakeGameUI:
         self.canvas.configure(width=canvas_w, height=canvas_h)
         self.canvas.create_rectangle(0, 0, canvas_w, canvas_h, fill=GRID_BG, outline=GRID_BG)
 
+        # Grille
         for x in range(self.width + 1):
-            px = x * CELL_SIZE
-            self.canvas.create_line(px, 0, px, canvas_h, fill=GRID_LINE)
+            self.canvas.create_line(x * CELL_SIZE, 0, x * CELL_SIZE, canvas_h, fill=GRID_LINE)
         for y in range(self.height + 1):
-            py = y * CELL_SIZE
-            self.canvas.create_line(0, py, canvas_w, py, fill=GRID_LINE)
+            self.canvas.create_line(0, y * CELL_SIZE, canvas_w, y * CELL_SIZE, fill=GRID_LINE)
 
+        # Nourriture
         for (x, y), food_type in self.env.foods.items():
             color = FOOD_COLORS[food_type]
-            x1 = x * CELL_SIZE + 6
-            y1 = y * CELL_SIZE + 6
-            x2 = (x + 1) * CELL_SIZE - 6
-            y2 = (y + 1) * CELL_SIZE - 6
-            self.canvas.create_oval(x1, y1, x2, y2, fill=color, outline="")
+            cx = x * CELL_SIZE + CELL_SIZE // 2
+            cy = y * CELL_SIZE + CELL_SIZE // 2
+            r = CELL_SIZE // 2 - 5
+            self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r, fill=color, outline="")
 
+        # Snakes avec gradient tête → queue
         for snake in self.env.snakes:
             base_color = SNAKE_COLORS[snake.snake_id % len(SNAKE_COLORS)]
-            color = base_color if snake.alive else DEAD_COLOR
             controller, _ = self._controller_for_snake(snake.snake_id)
-            head_label = "H" if snake.snake_id == self.current_human_snake_id else str(snake.snake_id)
+            n = max(1, len(snake.body))
+
             for idx, (x, y) in enumerate(snake.body):
                 x1 = x * CELL_SIZE + PADDING
                 y1 = y * CELL_SIZE + PADDING
                 x2 = (x + 1) * CELL_SIZE - PADDING
                 y2 = (y + 1) * CELL_SIZE - PADDING
-                self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+
+                if snake.alive:
+                    # Gradient : tête = 100%, queue = 40%
+                    factor = 1.0 - (idx / n) * 0.60
+                    cell_color = _dim_color(base_color, factor)
+                else:
+                    cell_color = DEAD_COLOR
+
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill=cell_color, outline="")
+
                 if idx == 0:
-                    self.canvas.create_text(x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2, text=head_label, fill="#ffffff", font=("Arial", 10, "bold"))
-                    if controller == "model":
-                        self.canvas.create_oval(x1 + 3, y1 + 3, x1 + 8, y1 + 8, fill="#ffffff", outline="")
+                    # Label sur la tête
+                    head_label = "H" if snake.snake_id == self.current_human_snake_id else str(snake.snake_id)
+                    self.canvas.create_text(
+                        x * CELL_SIZE + CELL_SIZE / 2,
+                        y * CELL_SIZE + CELL_SIZE / 2,
+                        text=head_label,
+                        fill="#ffffff" if snake.alive else "#6b7280",
+                        font=("Arial", 9, "bold"),
+                    )
+                    # Pastille blanche si modèle RL
+                    if controller == "model" and snake.alive:
+                        self.canvas.create_oval(x2 - 7, y1 + 1, x2 - 1, y1 + 7, fill="#ffffff", outline="")
+
+        # Overlay fin de partie
+        if self.last_done:
+            self._draw_end_overlay(canvas_w, canvas_h)
+
         self.canvas.update_idletasks()
         self.arena_canvas_frame.configure(scrollregion=self.arena_canvas_frame.bbox("all"))
+
+    def _draw_end_overlay(self, canvas_w: int, canvas_h: int) -> None:
+        """Affiche un bandeau de résultat semi-transparent sur l'arène."""
+        rankings = self._compute_rankings()
+        outcome = self.last_info.get("outcome", "ongoing")
+
+        # Fond semi-transparent (stipple gray25)
+        self.canvas.create_rectangle(0, canvas_h // 3, canvas_w, canvas_h * 2 // 3,
+                                     fill="#000000", stipple="gray50", outline="")
+        self.canvas.create_rectangle(0, canvas_h // 3, canvas_w, canvas_h * 2 // 3,
+                                     fill="#0b1220", stipple="gray25", outline="")
+
+        cx, cy = canvas_w // 2, canvas_h // 2
+
+        if outcome.startswith("win"):
+            title = "VICTOIRE !"
+            title_color = "#fbbf24"
+        elif outcome.startswith("draw"):
+            title = "MATCH NUL"
+            title_color = "#94a3b8"
+        else:
+            title = "DÉFAITE"
+            title_color = "#f87171"
+
+        self.canvas.create_text(cx, cy - 18, text=title, fill=title_color,
+                                font=("Segoe UI", 16, "bold"), anchor="center")
+
+        if rankings:
+            winner = rankings[0]
+            sid = winner["snake_id"]
+            ctrl, _ = self._controller_for_snake(sid)
+            name = "Human" if sid == self.current_human_snake_id else f"Snake {sid} [{ctrl}]"
+            score_txt = f"{name}  •  score {winner['score']}"
+            self.canvas.create_text(cx, cy + 10, text=score_txt, fill="#e5e7eb",
+                                    font=("Segoe UI", 10), anchor="center")
+
+        self.canvas.create_text(cx, cy + 34, text="Appuie sur Reset pour rejouer",
+                                fill=TEXT_MUTED, font=("Segoe UI", 8), anchor="center")
+
+    def _update_score_bars(self) -> None:
+        """Dessine des barres horizontales de score pour chaque snake."""
+        self.score_canvas.delete("all")
+        w = self.score_canvas.winfo_width()
+        if w < 10:
+            w = 280  # fallback avant premier rendu
+
+        snakes = self.env.snakes
+        if not snakes:
+            return
+
+        max_score = max((s.score for s in snakes), default=1)
+        if max_score == 0:
+            max_score = 1
+
+        bar_h = 16
+        padding_x = 6
+        label_w = 68
+        step_ratio = self.env.steps / max(1, self.env.max_steps)
+
+        # Barre de progression des steps (fine, en haut)
+        prog_y = 4
+        self.score_canvas.create_rectangle(padding_x, prog_y, w - padding_x, prog_y + 5,
+                                           fill="#1e293b", outline="")
+        prog_w = int((w - 2 * padding_x) * step_ratio)
+        if prog_w > 0:
+            self.score_canvas.create_rectangle(padding_x, prog_y, padding_x + prog_w, prog_y + 5,
+                                               fill=ACCENT, outline="")
+        self.score_canvas.create_text(w - padding_x, prog_y + 2,
+                                      text=f"{self.env.steps}/{self.env.max_steps}",
+                                      fill=TEXT_MUTED, font=("Consolas", 8), anchor="e")
+
+        # Barres de score par snake
+        y_start = 18
+        available_w = w - 2 * padding_x - label_w - 4
+
+        for i, snake in enumerate(snakes):
+            y = y_start + i * (bar_h + 6)
+            color = SNAKE_COLORS[snake.snake_id % len(SNAKE_COLORS)]
+
+            # Pastille + nom
+            self.score_canvas.create_rectangle(padding_x, y + 2, padding_x + 10, y + 12,
+                                               fill=color if snake.alive else DEAD_COLOR, outline="")
+            ctrl, _ = self._controller_for_snake(snake.snake_id)
+            label = f"S{snake.snake_id} {ctrl[:4]}"
+            self.score_canvas.create_text(padding_x + 14, y + 7, text=label,
+                                          fill=TEXT_MAIN if snake.alive else TEXT_MUTED,
+                                          font=("Consolas", 8), anchor="w")
+
+            # Fond de barre
+            bx = padding_x + label_w
+            self.score_canvas.create_rectangle(bx, y, bx + available_w, y + bar_h,
+                                               fill="#1e293b", outline="")
+
+            # Barre remplie
+            bar_fill = int(available_w * snake.score / max_score)
+            if bar_fill > 0:
+                bar_color = color if snake.alive else DEAD_COLOR
+                self.score_canvas.create_rectangle(bx, y, bx + bar_fill, y + bar_h,
+                                                   fill=bar_color, outline="")
+
+            # Score numérique
+            self.score_canvas.create_text(bx + available_w + 4, y + bar_h // 2,
+                                          text=str(snake.score),
+                                          fill=TEXT_MAIN if snake.alive else TEXT_MUTED,
+                                          font=("Consolas", 8), anchor="w")
 
     def _compute_rankings(self) -> list[dict]:
         rankings = self.last_info.get("rankings")
@@ -655,54 +859,70 @@ class SnakeGameUI:
         outcome = self.last_info.get("outcome", "ongoing")
         deaths = self.last_info.get("deaths", {})
 
-        lines = [
-            "STATUT",
-            f"Step         : {self.env.steps}/{self.env.max_steps}",
-            f"Reward P0    : {self.last_reward:.2f}",
-            f"Outcome      : {outcome}",
-            f"Snakes       : {len(self.env.snakes)}",
-            f"Alive        : {sum(1 for s in self.env.snakes if s.alive)}/{len(self.env.snakes)}",
-            f"Human        : {'aucun' if self.current_human_snake_id is None else f'Snake {self.current_human_snake_id}'}",
-            "",
-            "CONTRÔLE UTILISATEUR",
-            "↑/W/Z = haut   ↓/S = bas",
-            "←/A/Q = gauche  →/D = droite",
-            "Demi-tour interdit : le snake continue tout droit",
-            "Espace : pause / reprise",
-            "",
-            "CONTRÔLEURS",
-        ]
-
-        for spec in self._all_snake_controller_specs():
-            model_name = Path(spec["model_path"]).name if spec["model_path"] else "-"
-            lines.append(f"Snake {spec['snake_id']}: {spec['controller']:<10} | {model_name}")
-
-        lines.extend(["", "CLASSEMENT"])
-        for rank, item in enumerate(rankings, start=1):
-            sid = item["snake_id"]
-            ctrl, _ = self._controller_for_snake(sid)
-            label = f"Snake {sid}"
-            if sid == self.current_human_snake_id:
-                label += " [human]"
-            elif ctrl == "model":
-                label += " [model]"
-            alive_txt = "alive" if item.get("alive") else "dead"
-            lines.append(f"{rank:>2}. {label:<18} | score={item['score']:<3} | len={item['length']:<2} | {alive_txt}")
-
-        if deaths:
-            lines.extend(["", "DERNIERS DÉCÈS"])
-            for snake_id, reason in deaths.items():
-                lines.append(f"Snake {snake_id}: {reason}")
-
-        lines.extend(["", "NOURRITURES", f"normale : {sum(1 for f in self.env.foods.values() if f == FoodType.NORMAL)}", f"bonus   : {sum(1 for f in self.env.foods.values() if f == FoodType.BONUS)}", f"risky   : {sum(1 for f in self.env.foods.values() if f == FoodType.RISKY)}"])
-
-        if self.loaded_agent_errors:
-            lines.extend(["", "ALERTES MODELS"])
-            lines.extend(self.loaded_agent_errors)
-
         self.info_text.configure(state=tk.NORMAL)
         self.info_text.delete("1.0", tk.END)
-        self.info_text.insert(tk.END, "\n".join(lines))
+
+        def w(text: str, tag: str = "") -> None:
+            if tag:
+                self.info_text.insert(tk.END, text, tag)
+            else:
+                self.info_text.insert(tk.END, text)
+
+        # -- Statut --
+        w("STATUT\n", "header")
+        w(f"  Step    {self.env.steps}/{self.env.max_steps}\n", "sub")
+        outcome_label = OUTCOME_LABELS.get(outcome, outcome)
+        outcome_tag = "winner" if outcome.startswith("win") else ("alert" if outcome.startswith("loss") else "sub")
+        w(f"  Outcome {outcome_label}\n", outcome_tag)
+        alive_count = sum(1 for s in self.env.snakes if s.alive)
+        w(f"  Vivants {alive_count}/{len(self.env.snakes)}\n", "sub")
+        w("\n")
+
+        # -- Classement --
+        w("CLASSEMENT\n", "header")
+        for rank, item in enumerate(rankings, start=1):
+            sid = item["snake_id"]
+            ctrl, model_path = self._controller_for_snake(sid)
+            model_name = Path(model_path).name if model_path else "-"
+            alive = item.get("alive", False)
+
+            medal = ["🥇", "🥈", "🥉"][rank - 1] if rank <= 3 else f" {rank}."
+            name_tag = "winner" if rank == 1 and self.last_done else ("alive" if alive else "dead")
+            ctrl_display = "human" if sid == self.current_human_snake_id else ctrl
+            w(f"  {medal} Snake {sid}", name_tag)
+            w(f"  [{ctrl_display}]", "muted")
+            w(f"  score={item['score']}  len={item['length']}", "sub")
+            w(f"  {'●' if alive else '✕'}\n", "alive" if alive else "dead")
+            if ctrl == "model" and model_name != "-":
+                w(f"     {model_name}\n", "muted")
+        w("\n")
+
+        # -- Décès récents --
+        if deaths:
+            w("DÉCÈS\n", "header")
+            for snake_id, reason in deaths.items():
+                w(f"  Snake {snake_id}: {reason}\n", "dead")
+            w("\n")
+
+        # -- Nourriture --
+        w("NOURRITURES\n", "header")
+        n_normal = sum(1 for f in self.env.foods.values() if f == FoodType.NORMAL)
+        n_bonus  = sum(1 for f in self.env.foods.values() if f == FoodType.BONUS)
+        n_risky  = sum(1 for f in self.env.foods.values() if f == FoodType.RISKY)
+        w(f"  ● normale {n_normal}   ● bonus {n_bonus}   ● risky {n_risky}\n", "sub")
+        w("\n")
+
+        # -- Contrôles --
+        w("CONTRÔLES\n", "header")
+        w("  ↑/W/Z  ↓/S  ←/A/Q  →/D\n", "muted")
+        w("  Espace = pause / reprise\n", "muted")
+
+        # -- Alertes --
+        if self.loaded_agent_errors:
+            w("\nALERTES\n", "alert")
+            for err in self.loaded_agent_errors:
+                w(f"  {err}\n", "alert")
+
         self.info_text.configure(state=tk.DISABLED)
 
     def run(self) -> None:
@@ -710,16 +930,23 @@ class SnakeGameUI:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="UI multi-snake RL compacte avec scroll.")
-    parser.add_argument("--width", type=int, default=15)
-    parser.add_argument("--height", type=int, default=15)
-    parser.add_argument("--snakes", type=int, default=3, help="Nombre total de snakes")
-    parser.add_argument("--max-steps", type=int, default=300)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--model-path", type=str, default=None)
+    parser = argparse.ArgumentParser(description="Multi-Snake RL UI")
+    parser.add_argument("--width",      type=int, default=15)
+    parser.add_argument("--height",     type=int, default=15)
+    parser.add_argument("--snakes",     type=int, default=3)
+    parser.add_argument("--max-steps",  dest="max_steps", type=int, default=300)
+    parser.add_argument("--seed",       type=int, default=42)
+    parser.add_argument("--model-path", dest="model_path", type=str, default=None)
     args = parser.parse_args()
 
-    ui = SnakeGameUI(width=args.width, height=args.height, total_snakes=max(2, args.snakes), max_steps=args.max_steps, seed=args.seed, model_path=args.model_path)
+    ui = SnakeGameUI(
+        width=args.width,
+        height=args.height,
+        total_snakes=max(2, args.snakes),
+        max_steps=args.max_steps,
+        seed=args.seed,
+        model_path=args.model_path,
+    )
     ui.run()
 
 

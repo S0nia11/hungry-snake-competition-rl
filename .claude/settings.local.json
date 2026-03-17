@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python train_dqn.py)",
+      "Read(//c/Users/konan/AppData/Local/Temp/claude/c--Users-konan-OneDrive-App--par-renforcement-hungry-snake-competition-rl/4657ba5d-9fe8-4796-97b5-5f35f8c6675a/tasks/**)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import train_dqn; print\\(''OK''\\)\")"
+    ]
+  }
+}

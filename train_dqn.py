@@ -8,6 +8,7 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.optim.lr_scheduler as lr_sched
 
 from dqn_agent import DQNAgent
 from snake_env import MultiSnakeEnv
@@ -86,8 +87,11 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
         hidden_dim=args.hidden_dim,
         gamma=args.gamma,
         lr=args.lr,
+        weight_decay=args.weight_decay,
+        dropout=args.dropout,
         batch_size=args.batch_size,
         buffer_capacity=args.buffer_capacity,
+        n_step=args.n_step,
         target_update_freq=args.target_update_freq,
         tau=args.tau,
         epsilon_start=args.epsilon_start,
@@ -95,6 +99,7 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
         epsilon_decay=args.epsilon_decay,
         learning_starts=args.learning_starts,
         double_dqn=not args.disable_double_dqn,
+        grad_clip=args.grad_clip,
         device=args.device,
         seed=args.seed,
     )
@@ -121,12 +126,18 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
     eval_avg_ranks: List[float] = []
     eval_checkpoints: List[int] = []
 
+    scheduler = lr_sched.CosineAnnealingLR(agent.optimizer, T_max=args.episodes, eta_min=args.lr * 0.01)
+
     best_eval_score = -float("inf")
+    current_curriculum_bots = 1 if args.curriculum else None
 
     for episode in range(1, args.episodes + 1):
         if args.curriculum:
-            current_bots = 1 if episode <= args.curriculum_stage_1 else (2 if episode <= args.curriculum_stage_2 else args.n_bots)
-            env = build_env(args, n_bots=current_bots)
+            new_bots = 1 if episode <= args.curriculum_stage_1 else (2 if episode <= args.curriculum_stage_2 else args.n_bots)
+            if new_bots != current_curriculum_bots:
+                current_curriculum_bots = new_bots
+                env = build_env(args, n_bots=current_curriculum_bots)
+                print(f"  [Curriculum] Episode {episode}: passage à {current_curriculum_bots} bot(s)")
         state, _ = env.reset(seed=args.seed + episode)
         done = False
         total_reward = 0.0
@@ -149,6 +160,8 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
             last_info = info
 
         agent.decay_epsilon()
+        if len(agent.replay_buffer) >= agent.learning_starts:
+            scheduler.step()
 
         player_score = float(last_info.get("player_score", 0.0))
         player_alive = bool(last_info.get("player_alive", False))
@@ -182,8 +195,12 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
                 best_eval_score = combined_eval_score
                 agent.save(models_dir / "best_eval_model.pt")
 
+        if args.save_every > 0 and episode % args.save_every == 0:
+            agent.save(models_dir / f"checkpoint_ep{episode}.pt")
+
         if episode % args.log_every == 0 or episode == 1 or episode == args.episodes:
             avg_window = min(args.log_every, len(episode_rewards))
+            current_lr = scheduler.get_last_lr()[0]
             eval_suffix = ""
             if eval_rewards:
                 eval_suffix = (
@@ -197,7 +214,7 @@ def train(args: argparse.Namespace) -> Dict[str, List[float]]:
                 f"Episode {episode:4d}/{args.episodes} | "
                 f"reward={total_reward:7.2f} | score={player_score:5.1f} | "
                 f"steps={steps:4d} | alive={player_alive} | "
-                f"eps={agent.epsilon:.3f} | "
+                f"eps={agent.epsilon:.3f} | lr={current_lr:.2e} | "
                 f"avg_reward_{avg_window}={mean(episode_rewards[-avg_window:]):7.2f} | "
                 f"avg_score_{avg_window}={mean(episode_scores[-avg_window:]):5.2f}"
                 + eval_suffix
@@ -308,6 +325,10 @@ if __name__ == "__main__":
     parser.add_argument("--hidden-dim", dest="hidden_dim", type=int, default=256)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=1e-4)
+    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--grad-clip", dest="grad_clip", type=float, default=1.0)
+    parser.add_argument("--n-step", dest="n_step", type=int, default=3)
     parser.add_argument("--batch-size", dest="batch_size", type=int, default=128)
     parser.add_argument("--buffer-capacity", dest="buffer_capacity", type=int, default=100000)
     parser.add_argument("--target-update-freq", dest="target_update_freq", type=int, default=1)
@@ -321,7 +342,8 @@ if __name__ == "__main__":
     parser.add_argument("--curriculum-stage-1", dest="curriculum_stage_1", type=int, default=500)
     parser.add_argument("--curriculum-stage-2", dest="curriculum_stage_2", type=int, default=1000)
     parser.add_argument("--eval-every", dest="eval_every", type=int, default=100)
-    parser.add_argument("--eval-episodes", dest="eval_episodes", type=int, default=20)
+    parser.add_argument("--save-every", dest="save_every", type=int, default=500, help="Sauvegarder un checkpoint tous les N épisodes (0 = désactivé)")
+    parser.add_argument("--eval-episodes", dest="eval_episodes", type=int, default=50)
     parser.add_argument("--ma-window", dest="ma_window", type=int, default=50)
     parser.add_argument("--log-every", dest="log_every", type=int, default=50)
     parser.add_argument("--output-dir", dest="output_dir", type=str, default="outputs_v3")
