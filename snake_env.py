@@ -487,7 +487,10 @@ class MultiSnakeEnv:
         for food_type, wanted in self.food_counts.items():
             current = sum(1 for ft in self.foods.values() if ft == food_type)
             while current < wanted:
-                pos = self._random_empty_cell()
+                try:
+                    pos = self._random_empty_cell()
+                except RuntimeError:
+                    return  # Plateau plein, impossible de placer plus de nourriture
                 self.foods[pos] = food_type
                 current += 1
 

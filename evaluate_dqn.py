@@ -8,6 +8,12 @@ from snake_env import MultiSnakeEnv
 
 
 def evaluate(args: argparse.Namespace) -> None:
+    from pathlib import Path
+    model_path = Path(args.model_path)
+    if not model_path.exists():
+        print(f"Erreur: fichier modèle introuvable: {args.model_path}")
+        return
+
     env = MultiSnakeEnv(
         width=args.width,
         height=args.height,

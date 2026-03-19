@@ -359,6 +359,18 @@ if __name__ == "__main__":
     parser.add_argument("--loop-penalty", dest="loop_penalty", type=float, default=-1.5)
 
     args = parser.parse_args()
+
+    if args.curriculum and args.curriculum_stage_1 >= args.curriculum_stage_2:
+        parser.error(
+            f"--curriculum-stage-1 ({args.curriculum_stage_1}) doit être "
+            f"strictement inférieur à --curriculum-stage-2 ({args.curriculum_stage_2})"
+        )
+    if args.curriculum and args.curriculum_stage_2 >= args.episodes:
+        parser.error(
+            f"--curriculum-stage-2 ({args.curriculum_stage_2}) doit être "
+            f"strictement inférieur à --episodes ({args.episodes})"
+        )
+
     history = train(args)
 
     print("\nEntraînement terminé.")

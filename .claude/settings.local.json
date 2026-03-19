@@ -5,7 +5,10 @@
       "Read(//c/Users/konan/AppData/Local/Temp/claude/c--Users-konan-OneDrive-App--par-renforcement-hungry-snake-competition-rl/4657ba5d-9fe8-4796-97b5-5f35f8c6675a/tasks/**)",
       "Bash(python3 -c \":*)",
       "Bash(python -c \":*)",
-      "Bash(python -c \"import train_dqn; print\\(''OK''\\)\")"
+      "Bash(python -c \"import train_dqn; print\\(''OK''\\)\")",
+      "Bash(find '/c/Users/konan/OneDrive/App. par renforcement/hungry-snake-competition-rl' -type f \\\\\\(-name *greedy* -o -name *random* -o -name *.csv -o -name *.json -o -name *.log \\\\\\))",
+      "Bash(ls -la \"/c/Users/konan/OneDrive/App. par renforcement/hungry-snake-competition-rl/Modele_multi-snake-competition-rl \\(premiers tests modele random\\)/\")",
+      "Bash(python visualize_performance.py)"
     ]
   }
 }
